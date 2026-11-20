@@ -1282,3 +1282,24 @@ fn test_upgrade_executes_through_scheduled_operation() {
             == Some(Symbol::new(&env, "Upgrade"))
     }));
 }
+
+#[test]
+fn test_instance_ttl_extended() {
+    let env = Env::default();
+    env.mock_all_auths();
+    let contract_id = env.register(TimelockContract, ());
+    let client = TimelockContractClient::new(&env, &contract_id);
+    let admin = Address::generate(&env);
+    let governor = Address::generate(&env);
+    client.initialize(&admin, &governor, &100, &1_209_600);
+
+    // Advance ledger past default instance TTL
+    env.ledger().with_mut(|l| {
+        l.sequence_number += 10_000;
+    });
+
+    // Contract still answers queries
+    assert_eq!(client.admin(), admin);
+    assert_eq!(client.governor(), governor);
+    assert_eq!(client.min_delay(), 100);
+}
